@@ -412,6 +412,29 @@ nav.scrolled{background:rgba(6,13,26,.92);backdrop-filter:blur(20px);-webkit-bac
 /* ── CERTIFICATIONS ── */
 #certs{padding:100px 0;border-top:1px solid var(--border)}
 .cert-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+/* IBM featured cert — full-width split card (mirrors imo-card pattern) */
+.ibm-cert-card{
+  grid-column:1/-1;display:grid;grid-template-columns:1.6fr 1fr;
+  background:var(--surface);border:1px solid rgba(59,130,246,.28);border-radius:var(--r2);
+  overflow:hidden;transition:border-color .3s,transform .3s,box-shadow .3s;
+  position:relative;margin-bottom:4px}
+.ibm-cert-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(to right,transparent,var(--blue),transparent);z-index:2;pointer-events:none}
+.ibm-cert-card:hover{border-color:rgba(59,130,246,.45);transform:translateY(-2px);box-shadow:0 18px 44px rgba(0,0,0,.35)}
+.ibm-cert-left{padding:30px 32px;display:flex;flex-direction:column;gap:0}
+.ibm-cert-right{overflow:hidden;position:relative;background:var(--bg2);min-height:240px}
+.ibm-cert-right img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;
+  transition:transform .5s var(--ease);cursor:zoom-in}
+.ibm-cert-card:hover .ibm-cert-right img{transform:scale(1.03)}
+.ibm-cert-overlay{position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(6,13,26,.88) 0%,rgba(6,13,26,.2) 50%,transparent 100%);
+  display:flex;align-items:flex-end;padding:18px}
+.ibm-cert-link{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:rgba(220,232,248,.85);text-decoration:none;
+  border-bottom:1px solid rgba(220,232,248,.25);padding-bottom:2px;transition:color .2s,border-color .2s}
+.ibm-cert-link:hover{color:#fff;border-color:rgba(220,232,248,.7)}
+@media(max-width:900px){.ibm-cert-card{grid-template-columns:1fr}.ibm-cert-right{min-height:200px}}
 .cert-c{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);
   padding:22px 24px;display:grid;grid-template-rows:auto auto 1fr auto;gap:12px;
   transition:border-color .3s,transform .3s}
@@ -1603,14 +1626,34 @@ footer{border-top:1px solid var(--border);padding:28px 32px;position:relative;z-
             <div class="imo-yr-row"><span class="imo-yr">2026</span><span class="imo-yr-res gold">Gold Medal</span></div>
           </div>
         </div>
-        <div class="imo-right">
-          <img class="imo-cert-img" src="https://lh3.googleusercontent.com/d/1hicSj-e91rMjk68gQpGktg-bLQyYpeVl" alt="IMO 2023 Certificate" loading="lazy"/>
-          <div class="imo-cert-overlay">
-            <a href="https://lh3.googleusercontent.com/d/1hicSj-e91rMjk68gQpGktg-bLQyYpeVl" target="_blank" rel="noopener" class="imo-cert-link">
-              View Full Certificate
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            </a>
-          </div>
+        <!-- IMO right — TNEB-style clickable shot panel -->
+        <div class="imo-right" role="button" tabindex="0"
+             aria-label="View IMO 2023 Certificate — click to enlarge"
+             onclick="window.openGallery(window.IMO_CERT_GALLERY||[],0)"
+             style="cursor:zoom-in;position:relative;overflow:hidden;background:var(--bg2)">
+          <img class="imo-cert-img"
+               src="https://lh3.googleusercontent.com/d/1hicSj-e91rMjk68gQpGktg-bLQyYpeVl"
+               alt="IMO 2023 Certificate — International Rank 2, Score 59/60"
+               loading="lazy"
+               style="pointer-events:none"/>
+          <!-- Gradient overlay -->
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,26,.75) 0%,transparent 50%);pointer-events:none"></div>
+          <!-- Bottom label — same as tneb-shot-lbl -->
+          <span style="position:absolute;bottom:10px;left:14px;z-index:2;
+                       font-family:'JetBrains Mono',monospace;font-size:.55rem;letter-spacing:.1em;
+                       text-transform:uppercase;color:rgba(196,162,114,.85)">IMO 2023 · Rank 2</span>
+          <!-- Zoom icon — same as tneb-shot-zoom -->
+          <span class="imo-zoom-icon" aria-hidden="true"
+                style="position:absolute;top:10px;right:10px;z-index:2;
+                       width:26px;height:26px;border-radius:5px;
+                       background:rgba(6,13,26,.75);border:1px solid rgba(196,162,114,.3);
+                       display:flex;align-items:center;justify-content:center;
+                       opacity:0;transition:opacity .2s;pointer-events:none">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(196,162,114,.9)" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </span>
         </div>
       </div>
     </div>
@@ -1671,40 +1714,126 @@ footer{border-top:1px solid var(--border);padding:28px 32px;position:relative;z-
       <div class="divider"></div>
     </div>
     <div class="cert-grid">
-      <div class="cert-c reveal d1">
+
+      <!-- IBM Ethical Hacking — FEATURED (first, highest priority) -->
+      <div class="cert-c reveal d1" style="border-color:rgba(59,130,246,.28);position:relative;overflow:hidden;padding:0;display:flex;flex-direction:column">
+        <!-- Top accent line -->
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--blue),transparent);pointer-events:none;z-index:2"></div>
+
+        <!-- Certificate image strip — same pattern as .tneb-shot -->
+        <div class="ibm-cert-shot" role="button" tabindex="0"
+             aria-label="View IBM Ethical Hacking certificate — click to enlarge"
+             onclick="window.openGallery(window.IBM_CERT_GALLERY||[],0)"
+             style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;
+                    background:var(--bg2);cursor:zoom-in;border-bottom:1px solid rgba(59,130,246,.15)">
+          <img src="https://lh3.googleusercontent.com/d/1uO388bfxp15BWUEMGmCpxJKZVvZD6Xsh"
+               alt="IBM Ethical Hacking with Kali Linux — Certificate"
+               loading="lazy"
+               style="width:100%;height:100%;object-fit:cover;display:block;
+                      transition:transform .45s var(--ease),filter .45s;
+                      filter:brightness(.88) saturate(1.05)"/>
+          <!-- Bottom gradient + label — identical to .tneb-shot pattern -->
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(6,13,26,.7) 0%,transparent 55%);pointer-events:none"></div>
+          <span style="position:absolute;bottom:8px;left:10px;z-index:2;
+                       font-family:'JetBrains Mono',monospace;font-size:.5rem;letter-spacing:.1em;
+                       text-transform:uppercase;color:rgba(59,130,246,.85)">Certificate · IBM</span>
+          <!-- Zoom icon — identical to .tneb-shot-zoom pattern -->
+          <span class="ibm-cert-zoom" aria-hidden="true"
+                style="position:absolute;top:8px;right:8px;z-index:2;
+                       width:22px;height:22px;border-radius:4px;
+                       background:rgba(6,13,26,.7);border:1px solid rgba(59,130,246,.3);
+                       display:flex;align-items:center;justify-content:center;
+                       opacity:0;transition:opacity .2s;pointer-events:none">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(59,130,246,.9)" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </span>
+        </div>
+
+        <!-- Card body (matches other cert-c internal padding) -->
+        <div style="padding:18px 22px;display:grid;grid-template-rows:auto auto 1fr auto;gap:10px;flex:1">
+          <!-- Icon + badge row -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div class="cert-icon-box">🔐</div>
+            <img src="https://lh3.googleusercontent.com/d/1cswjLht-CJr2Zv65aG3Xm93tcHgg6h7I"
+                 alt="IBM Ethical Hacking Badge"
+                 loading="lazy"
+                 onclick="event.stopPropagation();window.openImage(this.src,'IBM Ethical Hacking Badge')"
+                 tabindex="0" role="button" aria-label="View IBM badge — click to enlarge"
+                 style="width:44px;height:44px;object-fit:contain;border-radius:6px;
+                        border:1px solid rgba(59,130,246,.22);background:rgba(12,21,38,.9);
+                        padding:3px;flex-shrink:0;cursor:zoom-in"/>
+          </div>
+          <div>
+            <p class="cert-name">IBM Ethical Hacking with Kali Linux</p>
+            <p class="cert-org">IBM Skills Network · Coursera · June 2026</p>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+              <span class="ptag hi" style="font-size:.58rem">Cybersecurity</span>
+              <span class="ptag hi" style="font-size:.58rem">Kali Linux</span>
+              <span class="ptag hi" style="font-size:.58rem">Ethical Hacking</span>
+              <span class="ptag" style="font-size:.58rem">Vulnerability Assessment</span>
+              <span class="ptag" style="font-size:.58rem">Security Awareness</span>
+            </div>
+          </div>
+          <span class="cert-status cs-done">Completed</span>
+          <!-- Actions -->
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <button onclick="window.openGallery(window.IBM_CERT_GALLERY||[],0)"
+                    class="cert-view" style="background:none;border:none;cursor:pointer;padding:0;font:inherit"
+                    aria-label="View IBM certificate in lightbox">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              View Certificate
+            </button>
+            <a href="https://lh3.googleusercontent.com/d/1nqN3CK9S--bzwRhFwAbOGWciSeCL3DDR"
+               target="_blank" rel="noopener" class="cert-view"
+               style="color:var(--text3);border-bottom-color:rgba(122,144,176,.18)"
+               aria-label="Open IBM certificate PDF">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              PDF
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generative AI Mastermind -->
+      <div class="cert-c reveal d2">
         <div class="cert-icon-box">🤖</div>
         <div><p class="cert-name">Generative AI Mastermind</p><p class="cert-org">Outskill · 2026</p></div>
         <span class="cert-status cs-done">Completed</span>
         <div><a href="https://lh3.googleusercontent.com/d/1l8Q7otNhJjHTZDZCoPkduaMwcm64mgln" target="_blank" rel="noopener" class="cert-view"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>View Certificate</a></div>
       </div>
-      <div class="cert-c reveal d2">
-        <div class="cert-icon-box">🔐</div>
-        <div><p class="cert-name">Ethical Hacking Using Kali Linux</p><p class="cert-org">IBM / Coursera · 2026</p></div>
-        <span class="cert-status cs-wip">In Progress</span>
-        <div></div>
-      </div>
+
+      <!-- English Typewriting — Higher -->
       <div class="cert-c reveal d3">
         <div class="cert-icon-box">⌨️</div>
         <div><p class="cert-name">English Typewriting — Higher</p><p class="cert-org">Government of Tamil Nadu · 2025</p></div>
         <span class="cert-status cs-done">First Class with Distinction</span>
         <div><a href="https://lh3.googleusercontent.com/d/1eCGGVrvrNE2A0pLvC0X09aB8vXUZssr5" target="_blank" rel="noopener" class="cert-view"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>View Certificate</a></div>
       </div>
+
+      <!-- English Typewriting — Lower -->
       <div class="cert-c reveal d1">
         <div class="cert-icon-box">⌨️</div>
         <div><p class="cert-name">English Typewriting — Lower</p><p class="cert-org">Government of Tamil Nadu · 2024</p></div>
         <span class="cert-status cs-done">First Class with Distinction</span>
         <div><a href="https://lh3.googleusercontent.com/d/1zwgqIKXLBlhZBqB0nZM3YH7DKonVU_Sg" target="_blank" rel="noopener" class="cert-view"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>View Certificate</a></div>
       </div>
+
+      <!-- HTML Course -->
       <div class="cert-c reveal d2">
         <div class="cert-icon-box">🌐</div>
         <div><p class="cert-name">HTML Course</p><p class="cert-org">NIELIT · 2020</p></div>
         <span class="cert-status cs-done">Completed</span>
         <div></div>
       </div>
+
+      <!-- Placeholder -->
       <div class="cert-c reveal d3" style="border-style:dashed;opacity:.45;cursor:default">
         <div class="cert-icon-box" style="font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text3)">+</div>
         <div><p class="cert-name" style="color:var(--text3)">More certificates on the way</p><p class="cert-org">Portfolio updated as I grow</p></div>
       </div>
+
     </div>
   </div>
 </section>
@@ -2463,6 +2592,52 @@ document.querySelectorAll('[data-tneb-idx]').forEach(el=>{
   const _mo = new MutationObserver(()=>{wireAllImages();wireVideo();});
   _mo.observe(document.body,{childList:true,subtree:true});
 
+})();
+</script>
+
+<!-- IBM cert shot & IMO shot hover styles -->
+<style>
+.ibm-cert-shot:hover img{transform:scale(1.06);filter:brightness(1) saturate(1.15)!important}
+.ibm-cert-shot:hover .ibm-cert-zoom{opacity:1!important}
+.ibm-cert-shot:focus-visible{outline:2px solid rgba(59,130,246,.6);outline-offset:2px}
+.imo-right:hover .imo-cert-img{transform:scale(1.04)}
+.imo-right:hover .imo-zoom-icon{opacity:1!important}
+.imo-right:focus-visible{outline:2px solid rgba(196,162,114,.5);outline-offset:2px}
+</style>
+
+<!-- IBM cert & IMO cert gallery data + keyboard wiring -->
+<script>
+window.IBM_CERT_GALLERY = [
+  {
+    src: 'https://lh3.googleusercontent.com/d/1uO388bfxp15BWUEMGmCpxJKZVvZD6Xsh',
+    caption: 'IBM Ethical Hacking with Kali Linux — Certificate',
+    alt: 'IBM Ethical Hacking with Kali Linux Certificate — IBM Skills Network via Coursera, June 2026'
+  }
+];
+window.IMO_CERT_GALLERY = [
+  {
+    src: 'https://lh3.googleusercontent.com/d/1hicSj-e91rMjk68gQpGktg-bLQyYpeVl',
+    caption: 'IMO 2023 — International Rank 2 · Score 59/60',
+    alt: 'IMO 2023 Certificate — International Rank 2, Score 59 out of 60, Distinction, Zonal Top 25'
+  }
+];
+
+/* Keyboard support for clickable shot panels */
+(function(){
+  function wireShot(selector, galleryKey){
+    document.querySelectorAll(selector).forEach(el=>{
+      if(el._shotWired) return;
+      el._shotWired = true;
+      el.addEventListener('keydown', e=>{
+        if(e.key==='Enter'||e.key===' '){
+          e.preventDefault();
+          window.openGallery(window[galleryKey]||[], 0);
+        }
+      });
+    });
+  }
+  wireShot('.ibm-cert-shot','IBM_CERT_GALLERY');
+  wireShot('.imo-right[tabindex]','IMO_CERT_GALLERY');
 })();
 </script>
 
