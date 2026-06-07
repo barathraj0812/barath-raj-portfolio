@@ -1155,7 +1155,51 @@ footer{border-top:1px solid var(--border);padding:28px 32px;position:relative;z-
   .cf-head{padding:18px 20px 16px}
 }
 
+
+/* ── TURNSTILE WIDGET — matches dark portfolio aesthetic ── */
+
+/* Wrapper sits between the message textarea and submit button */
+.cf-turnstile-wrap{
+  margin-top:16px;display:flex;flex-direction:column;gap:6px}
+
+/* Label row — same style as all other cf-label elements */
+.cf-turnstile-label{
+  font-family:'JetBrains Mono',sans-serif;font-size:.58rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text3);
+  display:flex;align-items:center;gap:6px}
+.cf-turnstile-label svg{color:var(--blue)}
+
+/* Container for the iframe Cloudflare injects */
+.cf-turnstile-box{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:7px;
+  overflow:hidden;transition:border-color .25s,box-shadow .25s;
+  /* Fixed height matches Turnstile compact widget height */
+  min-height:65px;display:flex;align-items:center;justify-content:flex-start;
+  padding:0}
+.cf-turnstile-box.ts-error{
+  border-color:rgba(239,68,68,.45);
+  box-shadow:0 0 0 3px rgba(239,68,68,.08)}
+.cf-turnstile-box.ts-ok{
+  border-color:rgba(34,197,94,.35)}
+
+/* The div Cloudflare renders into — full width */
+#cf-turnstile-widget{width:100%}
+
+/* Error message below widget */
+.cf-turnstile-err{
+  font-size:.7rem;color:rgba(239,68,68,.85);
+  display:flex;align-items:center;gap:5px;
+  min-height:16px}
+
 </style>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     CLOUDFLARE TURNSTILE — Client-side script (self-hosted compatible)
+     Loaded async; renders only when the contact section is visible.
+     Site key is set in the data-sitekey attribute on the widget div.
+     ═══════════════════════════════════════════════════════════════════ -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 </head>
 <body>
 
@@ -2441,6 +2485,54 @@ footer{border-top:1px solid var(--border);padding:28px 32px;position:relative;z-
                 </div>
               </div>
 
+              <!-- ══════════════════════════════════════════════════
+                   CLOUDFLARE TURNSTILE — Human Verification Widget
+                   ──────────────────────────────────────────────────
+                   data-sitekey: set to your SITE key (public, safe to
+                   expose in HTML). Two keys are provided:
+
+                     INVISIBLE (recommended — frictionless UX):
+                     0x4AAAAAADgRfaF2NUai-4ota_MCQBXxC9g
+
+                     MANAGED (shows checkbox challenge if needed):
+                     0x4AAAAAADgRfQzZSlhL__EP
+
+                   Replace the data-sitekey value below with whichever
+                   key you choose. Both are Cloudflare Pages compatible.
+
+                   data-theme="dark"   → matches the portfolio palette
+                   data-size="normal"  → standard widget size
+                   data-callback / data-error-callback → wired in JS
+
+                   The SECRET key is NEVER placed here — it is used only
+                   server-side (or via Web3Forms which handles it for you).
+                   ══════════════════════════════════════════════════ -->
+              <div class="cf-turnstile-wrap">
+                <span class="cf-turnstile-label">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                  Human Verification <span class="req" aria-label="required">*</span>
+                </span>
+
+                <div class="cf-turnstile-box" id="cf-turnstile-box">
+                  <!-- ↓ Replace data-sitekey with your chosen key (see comment above) -->
+                  <div id="cf-turnstile-widget"
+                    class="cf-turnstile"
+                    data-sitekey="0x4AAAAAADgRfaF2NUai-4ota_MCQBXxC9g"
+                    data-theme="dark"
+                    data-size="normal"
+                    data-callback="onTurnstileSuccess"
+                    data-error-callback="onTurnstileError"
+                    data-expired-callback="onTurnstileExpired">
+                  </div>
+                </div>
+
+                <span class="cf-turnstile-err" id="cf-turnstile-err"
+                      role="alert" aria-live="polite"></span>
+              </div>
+
               <!-- Submit -->
               <button class="cf-submit" id="cf-submit" type="submit">
                 <span class="cf-submit-text" style="display:flex;align-items:center;gap:9px">
@@ -3165,169 +3257,278 @@ window.IMO_CERT_GALLERY = [
 
 <script>
 
-/* ════════════════════════════════════════════════════════
-   CONTACT FORM — Validation, Honeypot, Submission
-   Backend: Web3Forms (privacy-safe, no server required)
-   To configure: replace YOUR_ACCESS_KEY below with the
-   key from https://web3forms.com (free, privacy-friendly)
-   ════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   CONTACT FORM — Validation · Honeypot · Cloudflare Turnstile
+   ────────────────────────────────────────────────────────────────────
+   ANTI-SPAM LAYERS (all active simultaneously):
+     1. Honeypot field       — catches dumb bots
+     2. Cloudflare Turnstile — stops sophisticated bots, frictionless UX
+     3. Cloudflare Worker    — server-side Turnstile verification + routing
+
+   SUBMISSION FLOW:
+     Form → Cloudflare Worker → Google Apps Script → Google Sheet
+     (no email is ever sent)
+
+   KEY LOCATIONS:
+     • Turnstile SITE key → data-sitekey on #cf-turnstile-widget (HTML)
+     • Turnstile SECRET key → Cloudflare Worker env var (never in HTML)
+     • Worker URL → WORKER_URL constant below
+   ════════════════════════════════════════════════════════════════════ */
 (function(){
 
-  /* ── CONFIG ─────────────────────────────────────────── */
-  const WEB3FORMS_KEY = '13d039fa-93b4-4c1f-b7d9-87361bf76d66'; // ← replace this
-  /* To get a key: go to https://web3forms.com, enter the
-     destination email, and copy the generated access key.
-     No server required. Messages arrive in your inbox.   */
+  /* ── CONFIG ──────────────────────────────────────────────────────── */
 
-  /* ── ELEMENTS ──────────────────────────────────────── */
-  const form      = document.getElementById('cf-form');
-  const success   = document.getElementById('cf-success');
-  const resetBtn  = document.getElementById('cf-reset-btn');
-  const submitBtn = document.getElementById('cf-submit');
-  const msgField  = document.getElementById('cf-message');
-  const counter   = document.getElementById('cf-message-count');
+  /* Cloudflare Worker URL — paste your deployed Worker URL here.
+     Example: https://contact-form.barath.workers.dev
+     ⚠ Replace the placeholder before deploying to production.       */
+	const WORKER_URL = 'https://contact-form.barath.workers.dev';
+
+  /* ── ELEMENTS ────────────────────────────────────────────────────── */
+  const form       = document.getElementById('cf-form');
+  const success    = document.getElementById('cf-success');
+  const resetBtn   = document.getElementById('cf-reset-btn');
+  const submitBtn  = document.getElementById('cf-submit');
+  const msgField   = document.getElementById('cf-message');
+  const counter    = document.getElementById('cf-message-count');
+  const tsBox      = document.getElementById('cf-turnstile-box');
+  const tsErr      = document.getElementById('cf-turnstile-err');
   if(!form) return;
 
-  /* ── CHARACTER COUNTER ──────────────────────────────── */
+  /* ── TURNSTILE STATE ─────────────────────────────────────────────── */
+  /* Stores the token returned by Cloudflare on successful verification.
+     Reset to null when token expires or on form reset.              */
+  let turnstileToken = null;
+
+  /* ── TURNSTILE CALLBACKS (must be on window — Cloudflare calls them) */
+
+  /* Called by Cloudflare when human verification succeeds.
+     Receives the one-time token to be sent with the form payload.  */
+  window.onTurnstileSuccess = function(token){
+    turnstileToken = token;
+    /* Clear any previous Turnstile error and update widget border    */
+    if(tsBox){ tsBox.classList.remove('ts-error'); tsBox.classList.add('ts-ok'); }
+    if(tsErr){ tsErr.innerHTML = ''; }
+  };
+
+  /* Called by Cloudflare when the challenge encounters an error
+     (network issue, browser incompatibility, etc.).                */
+  window.onTurnstileError = function(){
+    turnstileToken = null;
+    if(tsBox){ tsBox.classList.add('ts-error'); tsBox.classList.remove('ts-ok'); }
+    if(tsErr){
+      tsErr.innerHTML = ERR_ICON +
+        ' Verification error — please refresh the page and try again.';
+    }
+  };
+
+  /* Called by Cloudflare when a previously issued token expires
+     (tokens are valid for ~5 minutes). Prompts re-verification.   */
+  window.onTurnstileExpired = function(){
+    turnstileToken = null;
+    if(tsBox){ tsBox.classList.remove('ts-ok'); tsBox.classList.remove('ts-error'); }
+    if(tsErr){
+      tsErr.innerHTML = ERR_ICON +
+        ' Verification expired — please complete the check again.';
+    }
+    /* Auto-reset the Turnstile widget so it re-renders immediately   */
+    if(window.turnstile && typeof window.turnstile.reset === 'function'){
+      window.turnstile.reset('#cf-turnstile-widget');
+    }
+  };
+
+  /* ── CHARACTER COUNTER ───────────────────────────────────────────── */
   msgField.addEventListener('input', ()=>{
     const len = msgField.value.length;
     const max = parseInt(msgField.getAttribute('maxlength')) || 1500;
     counter.textContent = `${len} / ${max}`;
-    counter.className = 'cf-counter' +
-      (len > max*0.9 ? (len >= max ? ' over' : ' warn') : '');
+    counter.className   = 'cf-counter' +
+      (len > max * 0.9 ? (len >= max ? ' over' : ' warn') : '');
   });
 
-  /* ── VALIDATION HELPERS ─────────────────────────────── */
-  const ERR_ICON = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  /* ── SHARED ERROR ICON ───────────────────────────────────────────── */
+  const ERR_ICON = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="2.5">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>`;
 
+  /* ── VALIDATION HELPERS ──────────────────────────────────────────── */
   function showErr(inputEl, errEl, msg){
     inputEl.classList.add('error');
     inputEl.classList.remove('valid');
-    inputEl.setAttribute('aria-invalid','true');
+    inputEl.setAttribute('aria-invalid', 'true');
     errEl.innerHTML = ERR_ICON + ' ' + msg;
   }
   function clearErr(inputEl, errEl){
     inputEl.classList.remove('error');
     inputEl.classList.add('valid');
-    inputEl.setAttribute('aria-invalid','false');
+    inputEl.setAttribute('aria-invalid', 'false');
     errEl.innerHTML = '';
   }
   function isValidEmail(v){
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
   }
 
-  /* ── LIVE VALIDATION ────────────────────────────────── */
+  /* ── LIVE FIELD VALIDATION (fires on blur & input) ───────────────── */
   function wireField(id, errId, validator){
     const el  = document.getElementById(id);
     const err = document.getElementById(errId);
-    if(!el||!err) return;
-    ['blur','input'].forEach(ev=>el.addEventListener(ev, ()=>{
+    if(!el || !err) return;
+    ['blur', 'input'].forEach(ev => el.addEventListener(ev, ()=>{
       const r = validator(el.value);
       if(r === true) clearErr(el, err);
-      else showErr(el, err, r);
+      else           showErr(el, err, r);
     }));
   }
 
-  wireField('cf-name','cf-name-err', v=>{
-    if(!v.trim()) return 'Name is required.';
+  wireField('cf-name', 'cf-name-err', v=>{
+    if(!v.trim())           return 'Name is required.';
     if(v.trim().length < 2) return 'Please enter your full name.';
-    if(v.trim().length > 80) return 'Name is too long.';
+    if(v.trim().length > 80)return 'Name is too long.';
     return true;
   });
-  wireField('cf-email','cf-email-err', v=>{
-    if(!v.trim()) return 'Email address is required.';
-    if(!isValidEmail(v)) return 'Please enter a valid email address.';
+  wireField('cf-email', 'cf-email-err', v=>{
+    if(!v.trim())          return 'Email address is required.';
+    if(!isValidEmail(v))   return 'Please enter a valid email address.';
     return true;
   });
-  wireField('cf-subject','cf-subject-err', v=>{
+  wireField('cf-subject', 'cf-subject-err', v=>{
     if(!v) return 'Please select a subject.';
     return true;
   });
-  wireField('cf-message','cf-message-err', v=>{
-    if(!v.trim()) return 'Message is required.';
-    if(v.trim().length < 10) return 'Message must be at least 10 characters.';
+  wireField('cf-message', 'cf-message-err', v=>{
+    if(!v.trim())              return 'Message is required.';
+    if(v.trim().length < 10)   return 'Message must be at least 10 characters.';
     if(v.trim().length > 1500) return 'Message is too long (max 1500 characters).';
     return true;
   });
 
-  /* ── VALIDATE ALL ────────────────────────────────────── */
+  /* ── VALIDATE ALL FIELDS AT ONCE ─────────────────────────────────── */
   function validateAll(){
-    const fields = [
+    const rules = [
       { id:'cf-name',    errId:'cf-name-err',
-        validate: v=>(!v.trim()?'Name is required.':v.trim().length<2?'Please enter your full name.':v.trim().length>80?'Name is too long.':true) },
+        fn: v=>(!v.trim()?'Name is required.':v.trim().length<2?'Please enter your full name.':v.trim().length>80?'Name is too long.':true) },
       { id:'cf-email',   errId:'cf-email-err',
-        validate: v=>(!v.trim()?'Email address is required.':!isValidEmail(v)?'Please enter a valid email address.':true) },
+        fn: v=>(!v.trim()?'Email address is required.':!isValidEmail(v)?'Please enter a valid email address.':true) },
       { id:'cf-subject', errId:'cf-subject-err',
-        validate: v=>(!v?'Please select a subject.':true) },
+        fn: v=>(!v?'Please select a subject.':true) },
       { id:'cf-message', errId:'cf-message-err',
-        validate: v=>(!v.trim()?'Message is required.':v.trim().length<10?'Message must be at least 10 characters.':v.trim().length>1500?'Message is too long.':true) },
+        fn: v=>(!v.trim()?'Message is required.':v.trim().length<10?'Message must be at least 10 characters.':v.trim().length>1500?'Message is too long.':true) },
     ];
-    let ok = true;
-    fields.forEach(({id, errId, validate})=>{
+    let allOk = true;
+    rules.forEach(({id, errId, fn})=>{
       const el  = document.getElementById(id);
       const err = document.getElementById(errId);
-      if(!el||!err) return;
-      const r = validate(el.value);
-      if(r===true) clearErr(el,err);
-      else { showErr(el,err,r); ok=false; }
+      if(!el || !err) return;
+      const result = fn(el.value);
+      if(result === true) clearErr(el, err);
+      else { showErr(el, err, result); allOk = false; }
     });
-    return ok;
+    return allOk;
   }
 
-  /* ── SUBMIT ─────────────────────────────────────────── */
+  /* ── VALIDATE TURNSTILE ──────────────────────────────────────────── */
+  /* Returns true if a valid token exists, otherwise shows an error
+     below the widget and returns false.                              */
+  function validateTurnstile(){
+    if(turnstileToken) return true;
+    if(tsBox) tsBox.classList.add('ts-error');
+    if(tsErr){
+      tsErr.innerHTML = ERR_ICON +
+        ' Please complete the human verification check above.';
+    }
+    return false;
+  }
+
+  /* ── FORM SUBMIT HANDLER ─────────────────────────────────────────── */
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
 
-    /* Honeypot check — if bot filled it, silently drop */
+    /* ── Anti-spam layer 1: Honeypot
+       If the hidden field was filled by a bot, silently abort.     */
     const hp = document.getElementById('cf-hp-field');
     if(hp && hp.value.trim() !== '') return;
 
-    if(!validateAll()) return;
+    /* ── Validate all text fields first ── */
+    const fieldsOk    = validateAll();
 
-    /* UI: loading state */
+    /* ── Anti-spam layer 2: Turnstile token check
+       Done after field validation so field errors are visible first. */
+    const turnstileOk = validateTurnstile();
+
+    if(!fieldsOk || !turnstileOk){
+      /* Scroll the first error into view if needed */
+      const firstErr = form.querySelector('.error');
+      if(firstErr) firstErr.scrollIntoView({behavior:'smooth', block:'center'});
+      return;
+    }
+
+    /* ── Loading state ── */
     submitBtn.disabled = true;
     submitBtn.classList.add('loading');
 
-    /* Build payload */
-    const data = {
-      access_key: WEB3FORMS_KEY,
-      subject: `Portfolio Contact: ${document.getElementById('cf-subject').value}`,
-      from_name: document.getElementById('cf-name').value.trim(),
-      email: document.getElementById('cf-email').value.trim(),
-      organisation: document.getElementById('cf-org').value.trim() || '(not provided)',
-      topic: document.getElementById('cf-subject').value,
-      message: document.getElementById('cf-message').value.trim(),
-      botcheck: false,
+    /* ── Build payload for Cloudflare Worker
+       The Worker verifies the Turnstile token server-side using the
+       SECRET key stored as a Cloudflare env var (never in this file),
+       then forwards the clean data to Google Apps Script → Google Sheet.
+       No email is sent at any point.                                */
+    const payload = {
+      name:           document.getElementById('cf-name').value.trim(),
+      email:          document.getElementById('cf-email').value.trim(),
+      subject:        document.getElementById('cf-subject').value,
+      organisation:   document.getElementById('cf-org').value.trim(),
+      message:        document.getElementById('cf-message').value.trim(),
+      website:        document.getElementById('cf-hp-field')?.value || '',
+      turnstileToken: turnstileToken,
     };
 
     try {
-      const res = await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','Accept':'application/json'},
-        body: JSON.stringify(data),
+      const res  = await fetch(WORKER_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body:    JSON.stringify(payload),
       });
       const json = await res.json();
 
       if(json.success){
-        /* Show success */
+        /* ── Success: swap form for thank-you panel ── */
         form.style.display = 'none';
         success.classList.add('show');
+
+        /* Reset all field state */
         form.reset();
-        /* Reset counter & valid states */
+        turnstileToken = null;
         counter.textContent = '0 / 1500';
-        counter.className = 'cf-counter';
-        document.querySelectorAll('.cf-input,.cf-select,.cf-textarea')
-          .forEach(el=>el.classList.remove('valid','error'));
+        counter.className   = 'cf-counter';
+        document.querySelectorAll('.cf-input, .cf-select, .cf-textarea')
+          .forEach(el => el.classList.remove('valid', 'error'));
+
+        /* Reset Turnstile widget so it's fresh for the next message */
+        if(tsBox){ tsBox.classList.remove('ts-ok', 'ts-error'); }
+        if(tsErr){ tsErr.innerHTML = ''; }
+        if(window.turnstile && typeof window.turnstile.reset === 'function'){
+          window.turnstile.reset('#cf-turnstile-widget');
+        }
       } else {
-        throw new Error(json.message || 'Submission failed');
+        throw new Error(json.error || 'Submission failed.');
       }
-    } catch(err) {
-      /* Friendly error toast using existing TNEB toast system if available */
+
+    } catch(err){
+      /* ── Friendly network/server error message ── */
+      const errMsg = ERR_ICON +
+        ' Could not send your message — please try again shortly.';
       if(typeof tnebToast === 'function'){
-        tnebToast('Could not send message. Please try again.','red',3500);
+        tnebToast('Could not send message. Please try again.', 'red', 3500);
       } else {
-        const errEl = document.getElementById('cf-message-err');
-        if(errEl) errEl.innerHTML = ERR_ICON + ' Network error — please try again shortly.';
+        const msgErr = document.getElementById('cf-message-err');
+        if(msgErr) msgErr.innerHTML = errMsg;
+      }
+      /* Reset Turnstile widget on any error */
+      if(window.turnstile && typeof window.turnstile.reset === 'function'){
+        window.turnstile.reset('#cf-turnstile-widget');
+        turnstileToken = null;
+        if(tsBox){ tsBox.classList.remove('ts-ok', 'ts-error'); }
       }
     } finally {
       submitBtn.disabled = false;
@@ -3335,7 +3536,7 @@ window.IMO_CERT_GALLERY = [
     }
   });
 
-  /* ── RESET ───────────────────────────────────────────── */
+  /* ── RESET BUTTON (shown in success panel) ───────────────────────── */
   resetBtn && resetBtn.addEventListener('click', ()=>{
     success.classList.remove('show');
     form.style.display = '';
